@@ -14,4 +14,4 @@ Projenin çalışması için bilgisayarınızda **Python 3.10 veya üzeri** bir 
 
 1. Depoyu bilgisayarınıza klonlayın:
    ```bash
-   git clone [https://github.com/KULLANICI_ADIN/Arac_Bakim_Sistemi.git](https://github.com/KULLANICI_ADIN/Arac_Bakim_Sistemi.git)
+   git clone [https://github.com/karabeyozturk/Arac_Bakim_Sistemi.git](https://github.com/karabeyozturk/Arac_Bakim_Sistemi.git)
