@@ -5,7 +5,68 @@ import plotly.express as px
 from modeller import Arac, BakimKaydi
 from veritabani import baglanti_olustur
 
+# --- SAYFA VE TASARIM YAPILANDIRMASI (CUSTOM CSS) ---
 st.set_page_config(page_title="Premium Araç Yönetimi", page_icon="🚗", layout="wide")
+
+custom_css = """
+<style>
+    /* Genel Arka Plan ve Metin Rengi */
+    .stApp {
+        background-color: #0e1117;
+        color: #f0f2f6;
+    }
+    
+    /* Yan Menü (Sidebar) Gradient Tasarımı */
+    [data-testid="stSidebar"] {
+        background-image: linear-gradient(180deg, #1a1c24 0%, #0e1117 100%);
+        border-right: 1px solid #2d303e;
+    }
+    
+    /* Üst Metrik Kartları (Dashboard) Efektleri */
+    div[data-testid="metric-container"] {
+        background-color: #1a1c24;
+        border: 1px solid #2d303e;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease-in-out;
+    }
+    div[data-testid="metric-container"]:hover {
+        transform: translateY(-5px);
+        border-color: #4A90E2;
+        box-shadow: 0 6px 12px rgba(74, 144, 226, 0.2);
+    }
+    
+    /* Buton Tasarımları ve Animasyonları */
+    .stButton>button {
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #357ABD;
+        box-shadow: 0 0 15px rgba(74, 144, 226, 0.4);
+        transform: scale(1.02);
+    }
+    
+    /* Form Alanları (Input) Tasarımı */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        background-color: #1a1c24;
+        color: white;
+        border: 1px solid #2d303e;
+        border-radius: 6px;
+    }
+    .stSelectbox>div>div>div {
+        background-color: #1a1c24;
+        color: white;
+    }
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
+# ----------------------------------------------------
 
 conn = baglanti_olustur()
 cursor = conn.cursor()
@@ -33,7 +94,7 @@ if secim == "📊 Dashboard (Genel Bakış)":
     col1, col2, col3 = st.columns(3)
     col1.metric(label="Kayıtlı Toplam Araç", value=f"{toplam_arac} Adet")
     col2.metric(label="Toplam Bakım Gideri", value=f"{toplam_maliyet:,.2f} ₺")
-    col3.metric(label="Sistem Durumu", value="Aktif", delta="Sorunsuz")
+    col3.metric(label="Sistem Durumu", value="Aktif", delta="Kusursuz")
 
     st.markdown("---")
     
@@ -43,14 +104,18 @@ if secim == "📊 Dashboard (Genel Bakış)":
         col_grafik1, col_grafik2 = st.columns(2)
         with col_grafik1:
             st.subheader("Araç Bazlı Toplam Harcama Dağılımı")
-            fig_pie = px.pie(df_grafik, values='toplam', names='plaka', hole=0.4)
+            fig_pie = px.pie(df_grafik, values='toplam', names='plaka', hole=0.4, 
+                             color_discrete_sequence=px.colors.sequential.RdBu)
+            fig_pie.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"))
             st.plotly_chart(fig_pie, use_container_width=True)
         with col_grafik2:
             st.subheader("Finansal Gider Karşılaştırması")
-            fig_bar = px.bar(df_grafik, x='plaka', y='toplam', color='plaka', text_auto=True)
+            fig_bar = px.bar(df_grafik, x='plaka', y='toplam', color='plaka', text_auto=True,
+                             color_discrete_sequence=px.colors.sequential.Teal)
+            fig_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"))
             st.plotly_chart(fig_bar, use_container_width=True)
     else:
-        st.info("Grafik oluşturulabilmesi için sisteme bakım kaydı girilmesi gerekmektedir.")
+        st.info("💡 Grafiklerin oluşması için soldaki menüden sisteme araç ve bakım kaydı giriniz.")
 
 elif secim == "🚗 Yeni Araç Ekle":
     st.title("🚗 Sisteme Yeni Araç Kaydı")
@@ -107,7 +172,7 @@ elif secim == "🔧 Bakım ve Masraf İşle":
                                    (yeni_bakim.plaka, yeni_bakim.islem_turu, yeni_bakim.kilometre, yeni_bakim.maliyet, yeni_bakim.tarih))
                     cursor.execute("UPDATE araclar SET kilometre = ? WHERE plaka = ?", (islem_km, secilen_plaka))
                     conn.commit()
-                    st.success("✅ Bakım verisi başarıyla işlenmiş ve aracın güncel kilometresi revize edilmiştir.")
+                    st.success("✅ Bakım verisi işlendi ve aracın güncel kilometresi güncellendi.")
                 else:
                     st.warning("⚠️ İşlem detayı boş bırakılamaz.")
 
