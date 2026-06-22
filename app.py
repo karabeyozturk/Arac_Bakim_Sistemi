@@ -5,12 +5,12 @@ import plotly.express as px
 from modeller import Arac, BakimKaydi
 from veritabani import baglanti_olustur
 
-# st.set_page_config(page_title="Premium Araç Yönetimi", page_icon="🚗", layout="wide")
+st.set_page_config(page_title="Premium Araç Yönetimi", page_icon="🚗", layout="wide")
 
-# conn = baglanti_olustur()
+conn = baglanti_olustur()
 cursor = conn.cursor()
 
-# st.sidebar.markdown("### ⚙️ Yönetim Paneli")
+st.sidebar.markdown("### ⚙️ Yönetim Paneli")
 st.sidebar.markdown("---")
 secim = st.sidebar.radio("İşlem Menüsü:", [
     "📊 Dashboard (Genel Bakış)", 
@@ -24,29 +24,27 @@ if secim == "📊 Dashboard (Genel Bakış)":
     st.title("📊 Sistem Gösterge Paneli")
     st.markdown("Araç filonuzun ve bakım maliyetlerinizin genel finansal analizi.")
     
-    # cursor.execute("SELECT COUNT(*) FROM araclar")
+    cursor.execute("SELECT COUNT(*) FROM araclar")
     toplam_arac = cursor.fetchone()[0]
     
     cursor.execute("SELECT SUM(maliyet) FROM bakimlar")
     toplam_maliyet = cursor.fetchone()[0] or 0.0
     
-    # col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
     col1.metric(label="Kayıtlı Toplam Araç", value=f"{toplam_arac} Adet")
     col2.metric(label="Toplam Bakım Gideri", value=f"{toplam_maliyet:,.2f} ₺")
     col3.metric(label="Sistem Durumu", value="Aktif", delta="Sorunsuz")
 
     st.markdown("---")
     
-    # df_grafik = pd.read_sql_query("SELECT plaka, SUM(maliyet) as toplam FROM bakimlar GROUP BY plaka", conn)
+    df_grafik = pd.read_sql_query("SELECT plaka, SUM(maliyet) as toplam FROM bakimlar GROUP BY plaka", conn)
     
     if not df_grafik.empty:
         col_grafik1, col_grafik2 = st.columns(2)
-        
         with col_grafik1:
             st.subheader("Araç Bazlı Toplam Harcama Dağılımı")
             fig_pie = px.pie(df_grafik, values='toplam', names='plaka', hole=0.4)
             st.plotly_chart(fig_pie, use_container_width=True)
-            
         with col_grafik2:
             st.subheader("Finansal Gider Karşılaştırması")
             fig_bar = px.bar(df_grafik, x='plaka', y='toplam', color='plaka', text_auto=True)
@@ -57,7 +55,7 @@ if secim == "📊 Dashboard (Genel Bakış)":
 elif secim == "🚗 Yeni Araç Ekle":
     st.title("🚗 Sisteme Yeni Araç Kaydı")
     
-    # with st.form("arac_ekle_form"):
+    with st.form("arac_ekle_form"):
         col1, col2 = st.columns(2)
         with col1:
             plaka = st.text_input("Araç Plakası (Örn: 16ABC123)").upper()
@@ -124,15 +122,14 @@ elif secim == "📋 Kayıtlar ve Finansal Rapor":
     else:
         secilen_plaka = st.selectbox("Sorgulanacak Araç Plakası:", plaka_listesi)
         
-        # df = pd.read_sql_query("SELECT tarih, islem_turu, kilometre, maliyet FROM bakimlar WHERE plaka = ? ORDER BY kilometre DESC", conn, params=(secilen_plaka,))
+        df = pd.read_sql_query("SELECT tarih, islem_turu, kilometre, maliyet FROM bakimlar WHERE plaka = ? ORDER BY kilometre DESC", conn, params=(secilen_plaka,))
         
         if not df.empty:
             toplam_harcama = df['maliyet'].sum()
             st.markdown(f"### Toplam Finansal Gider: **{toplam_harcama:,.2f} ₺**")
-            
             st.dataframe(df, use_container_width=True)
             
-            # csv = df.to_csv(index=False).encode('utf-8')
+            csv = df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Tabloyu CSV Olarak İndir",
                 data=csv,
@@ -162,7 +159,7 @@ elif secim == "⏱️ Akıllı Uyarı Sistemi":
         if son_bakim:
             fark = guncel_km - son_bakim[0]
             
-            # col1, col2, col3 = st.columns(3)
+            col1, col2, col3 = st.columns(3)
             col1.metric(label="Güncel Kilometre", value=f"{guncel_km} km")
             col2.metric(label="Son İşlem Kilometresi", value=f"{son_bakim[0]} km")
             col3.metric(label="Kullanılan Kilometre", value=f"{fark} km", delta=f"{10000 - fark} km Kaldı" if fark < 10000 else "Sınır Aşıldı", delta_color="inverse")
@@ -170,12 +167,12 @@ elif secim == "⏱️ Akıllı Uyarı Sistemi":
             st.markdown("---")
             
             if fark >= 10000:
-                st.error("🚨 KRİTİK UYARI: Standart 10.000 km periyodik bakım sınırı aşılmıştır! Lütfen en kısa sürede servise başvurun.")
+                st.error("🚨 KRİTİK UYARI: Standart 10.000 km periyodik bakım sınırı aşılmıştır!")
             elif fark >= 1000:
-                st.warning("⚠️ BİLGİ MESAJI: Ağır mekanik işlem (rektefiye vb.) yapıldıysa 1.000 km rodaj bakım (LL-04 yağ değişimi) zamanı gelmiştir.")
+                st.warning("⚠️ BİLGİ MESAJI: Ağır mekanik işlem yapıldıysa 1.000 km rodaj bakım zamanı gelmiştir.")
             else:
                 st.success("✅ DURUM GÜVENLİ: Herhangi bir periyodik bakım veya rodaj sınırına ulaşılmamıştır.")
         else:
             st.info("Veritabanında karşılaştırma yapılabilecek bakım kaydı bulunmamaktadır.")
 
-# conn.close()
+conn.close()
