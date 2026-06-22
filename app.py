@@ -25,7 +25,7 @@ if secim == "1. Yeni Araç Kaydı":
     
     # Yeni araç verilerinin alınması için form yapısı oluşturulmuştur.
     with st.form("arac_ekle_form"):
-        plaka = st.text_input("Araç Plakası (Örn: 16ABC123)").upper()
+        plaka = st.text_input("Araç Plakası (Örn: 58AFP807)").upper()
         marka = st.text_input("Marka (Örn: BMW)")
         model = st.text_input("Model (Örn: 525d xDrive)")
         km = st.number_input("Güncel Kilometre", min_value=0, step=1)
