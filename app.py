@@ -52,11 +52,22 @@ st.markdown("""
 
 /* ── Top padding reset ───────────────────────────────────────────── */
 .block-container {
-    padding-top: 1.2rem !important;
+    padding-top: 0rem !important;
     padding-bottom: 2rem !important;
     max-width: 1400px;
     position: relative;
     z-index: 1;
+}
+
+/* ── Hide Streamlit default top padding/header gap ───────────────── */
+header[data-testid="stHeader"] {
+    display: none !important;
+}
+.stMainBlockContainer {
+    padding-top: 0.5rem !important;
+}
+div[data-testid="stToolbar"] {
+    display: none !important;
 }
 
 /* ── Logo / Brand header ─────────────────────────────────────────── */
