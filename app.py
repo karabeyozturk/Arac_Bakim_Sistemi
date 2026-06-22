@@ -1,37 +1,73 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import plotly.express as px
 from modeller import Arac, BakimKaydi
 from veritabani import baglanti_olustur
 
-# Arayüz sayfa yapılandırması ve başlık ataması gerçekleştirilmiştir.
-st.set_page_config(page_title="Araç Bakım Sistemi", layout="wide")
+# st.set_page_config(page_title="Premium Araç Yönetimi", page_icon="🚗", layout="wide")
 
-# Veritabanı bağlantısı başlatılarak imleç (cursor) nesnesi oluşturulmuştur.
-conn = baglanti_olustur()
+# conn = baglanti_olustur()
 cursor = conn.cursor()
 
-# Kullanıcı arayüzü için sol menü (sidebar) navigasyon yapısı kurulmuştur.
-st.sidebar.title("Sistem Menüsü")
-secim = st.sidebar.radio("İşlem Seçimi:", [
-    "1. Yeni Araç Kaydı", 
-    "2. Bakım/Masraf Girişi", 
-    "3. Geçmiş Kayıt Dökümü", 
-    "4. Periyodik Bakım Kontrolü"
+# st.sidebar.markdown("### ⚙️ Yönetim Paneli")
+st.sidebar.markdown("---")
+secim = st.sidebar.radio("İşlem Menüsü:", [
+    "📊 Dashboard (Genel Bakış)", 
+    "🚗 Yeni Araç Ekle", 
+    "🔧 Bakım ve Masraf İşle", 
+    "📋 Kayıtlar ve Finansal Rapor", 
+    "⏱️ Akıllı Uyarı Sistemi"
 ])
 
-if secim == "1. Yeni Araç Kaydı":
-    st.header("Sisteme Yeni Araç Ekleme Modülü")
+if secim == "📊 Dashboard (Genel Bakış)":
+    st.title("📊 Sistem Gösterge Paneli")
+    st.markdown("Araç filonuzun ve bakım maliyetlerinizin genel finansal analizi.")
     
-    # Yeni araç verilerinin alınması için form yapısı oluşturulmuştur.
-    with st.form("arac_ekle_form"):
-        plaka = st.text_input("Araç Plakası (Örn: 58AFP807)").upper()
-        marka = st.text_input("Marka (Örn: BMW)")
-        model = st.text_input("Model (Örn: 525d xDrive)")
-        km = st.number_input("Güncel Kilometre", min_value=0, step=1)
-        submit = st.form_submit_button("Sisteme Kaydet")
+    # cursor.execute("SELECT COUNT(*) FROM araclar")
+    toplam_arac = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT SUM(maliyet) FROM bakimlar")
+    toplam_maliyet = cursor.fetchone()[0] or 0.0
+    
+    # col1, col2, col3 = st.columns(3)
+    col1.metric(label="Kayıtlı Toplam Araç", value=f"{toplam_arac} Adet")
+    col2.metric(label="Toplam Bakım Gideri", value=f"{toplam_maliyet:,.2f} ₺")
+    col3.metric(label="Sistem Durumu", value="Aktif", delta="Sorunsuz")
 
-        # Form gönderimi sonrası veritabanı kayıt işlemleri ve hata yönetimi sağlanmıştır.
+    st.markdown("---")
+    
+    # df_grafik = pd.read_sql_query("SELECT plaka, SUM(maliyet) as toplam FROM bakimlar GROUP BY plaka", conn)
+    
+    if not df_grafik.empty:
+        col_grafik1, col_grafik2 = st.columns(2)
+        
+        with col_grafik1:
+            st.subheader("Araç Bazlı Toplam Harcama Dağılımı")
+            fig_pie = px.pie(df_grafik, values='toplam', names='plaka', hole=0.4)
+            st.plotly_chart(fig_pie, use_container_width=True)
+            
+        with col_grafik2:
+            st.subheader("Finansal Gider Karşılaştırması")
+            fig_bar = px.bar(df_grafik, x='plaka', y='toplam', color='plaka', text_auto=True)
+            st.plotly_chart(fig_bar, use_container_width=True)
+    else:
+        st.info("Grafik oluşturulabilmesi için sisteme bakım kaydı girilmesi gerekmektedir.")
+
+elif secim == "🚗 Yeni Araç Ekle":
+    st.title("🚗 Sisteme Yeni Araç Kaydı")
+    
+    # with st.form("arac_ekle_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            plaka = st.text_input("Araç Plakası (Örn: 16ABC123)").upper()
+            marka = st.text_input("Marka (Örn: BMW)")
+        with col2:
+            model = st.text_input("Model (Örn: 525d xDrive)")
+            km = st.number_input("Güncel Kilometre", min_value=0, step=1)
+        
+        submit = st.form_submit_button("Sisteme Kaydet", use_container_width=True)
+
         if submit:
             if plaka and marka and model:
                 try:
@@ -39,16 +75,15 @@ if secim == "1. Yeni Araç Kaydı":
                     cursor.execute("INSERT INTO araclar (plaka, marka, model, kilometre) VALUES (?, ?, ?, ?)", 
                                    (yeni_arac.plaka, yeni_arac.marka, yeni_arac.model, yeni_arac.kilometre))
                     conn.commit()
-                    st.success(f"{plaka} plakalı araç başarıyla veritabanına işlenmiştir.")
+                    st.success(f"✅ {plaka} plakalı araç başarıyla veritabanına işlenmiştir.")
                 except sqlite3.IntegrityError:
-                    st.error("HATA: Girilen plaka sistemde zaten mevcuttur.")
+                    st.error("❌ HATA: Girilen plaka sistemde zaten mevcuttur.")
             else:
-                st.warning("Eksik veri girişi! Lütfen tüm alanları doldurunuz.")
+                st.warning("⚠️ Eksik veri girişi! Lütfen tüm alanları doldurunuz.")
 
-elif secim == "2. Bakım/Masraf Girişi":
-    st.header("Araç Bakım ve Masraf İşleme Modülü")
+elif secim == "🔧 Bakım ve Masraf İşle":
+    st.title("🔧 Bakım ve Masraf Girişi")
     
-    # İşlem yapılacak aracın seçilebilmesi için veritabanından plaka listesi çekilmiştir.
     cursor.execute("SELECT plaka FROM araclar")
     plaka_listesi = [arac[0] for arac in cursor.fetchall()]
 
@@ -57,12 +92,16 @@ elif secim == "2. Bakım/Masraf Girişi":
     else:
         with st.form("bakim_ekle_form"):
             secilen_plaka = st.selectbox("İşlem Yapılacak Araç:", plaka_listesi)
-            islem_turu = st.text_input("İşlem Detayı (Örn: LL-04 Motor Yağı, Rektefiye Rodaj vs.)")
-            islem_km = st.number_input("İşlem Kilometresi", min_value=0, step=1)
-            maliyet = st.number_input("Maliyet Tutarı (TL)", min_value=0.0, step=10.0)
-            submit = st.form_submit_button("Bakım Verisini İşle")
+            islem_turu = st.text_input("İşlem Detayı (Örn: LL-04 Motor Yağı Değişimi, Rektefiye Rodaj vs.)")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                islem_km = st.number_input("İşlem Kilometresi", min_value=0, step=1)
+            with col2:
+                maliyet = st.number_input("Maliyet Tutarı (TL)", min_value=0.0, step=10.0)
+            
+            submit = st.form_submit_button("Bakım Verisini İşle", use_container_width=True)
 
-            # Bakım verilerinin kaydedilmesi ve araç güncel kilometresinin güncellenmesi sağlanmıştır.
             if submit:
                 if islem_turu:
                     yeni_bakim = BakimKaydi(secilen_plaka, islem_turu, islem_km, maliyet)
@@ -70,12 +109,12 @@ elif secim == "2. Bakım/Masraf Girişi":
                                    (yeni_bakim.plaka, yeni_bakim.islem_turu, yeni_bakim.kilometre, yeni_bakim.maliyet, yeni_bakim.tarih))
                     cursor.execute("UPDATE araclar SET kilometre = ? WHERE plaka = ?", (islem_km, secilen_plaka))
                     conn.commit()
-                    st.success("Bakım verisi başarıyla işlenmiş ve aracın güncel kilometresi revize edilmiştir.")
+                    st.success("✅ Bakım verisi başarıyla işlenmiş ve aracın güncel kilometresi revize edilmiştir.")
                 else:
-                    st.warning("İşlem detayı boş bırakılamaz.")
+                    st.warning("⚠️ İşlem detayı boş bırakılamaz.")
 
-elif secim == "3. Geçmiş Kayıt Dökümü":
-    st.header("Geçmiş Bakım ve Masraf Analizi")
+elif secim == "📋 Kayıtlar ve Finansal Rapor":
+    st.title("📋 Finansal Rapor ve Kayıt Dökümü")
     
     cursor.execute("SELECT plaka FROM araclar")
     plaka_listesi = [arac[0] for arac in cursor.fetchall()]
@@ -85,18 +124,26 @@ elif secim == "3. Geçmiş Kayıt Dökümü":
     else:
         secilen_plaka = st.selectbox("Sorgulanacak Araç Plakası:", plaka_listesi)
         
-        # Seçilen araca ait geçmiş veriler Pandas DataFrame aracılığıyla tabloya dönüştürülmüştür.
-        df = pd.read_sql_query("SELECT tarih, islem_turu, kilometre, maliyet FROM bakimlar WHERE plaka = ? ORDER BY kilometre DESC", conn, params=(secilen_plaka,))
+        # df = pd.read_sql_query("SELECT tarih, islem_turu, kilometre, maliyet FROM bakimlar WHERE plaka = ? ORDER BY kilometre DESC", conn, params=(secilen_plaka,))
         
         if not df.empty:
-            st.dataframe(df, use_container_width=True)
             toplam_harcama = df['maliyet'].sum()
-            st.write(f"### Toplam Finansal Gider: {toplam_harcama} TL")
+            st.markdown(f"### Toplam Finansal Gider: **{toplam_harcama:,.2f} ₺**")
+            
+            st.dataframe(df, use_container_width=True)
+            
+            # csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Tabloyu CSV Olarak İndir",
+                data=csv,
+                file_name=f'{secilen_plaka}_bakim_gecmisi.csv',
+                mime='text/csv',
+            )
         else:
             st.info("Bu araca ait herhangi bir bakım kaydı bulunamamıştır.")
 
-elif secim == "4. Periyodik Bakım Kontrolü":
-    st.header("Akıllı Bakım ve Rodaj Uyarı Sistemi")
+elif secim == "⏱️ Akıllı Uyarı Sistemi":
+    st.title("⏱️ Akıllı Bakım ve Rodaj Uyarıları")
     
     cursor.execute("SELECT plaka FROM araclar")
     plaka_listesi = [arac[0] for arac in cursor.fetchall()]
@@ -106,7 +153,6 @@ elif secim == "4. Periyodik Bakım Kontrolü":
     else:
         secilen_plaka = st.selectbox("Kontrol Edilecek Araç:", plaka_listesi)
         
-        # Aracın güncel kilometresi ile son işlem kilometresi arasındaki fark hesaplanmıştır.
         cursor.execute("SELECT kilometre FROM araclar WHERE plaka = ?", (secilen_plaka,))
         guncel_km = cursor.fetchone()[0]
         
@@ -115,19 +161,21 @@ elif secim == "4. Periyodik Bakım Kontrolü":
         
         if son_bakim:
             fark = guncel_km - son_bakim[0]
-            st.write(f"Güncel Kilometre Verisi: **{guncel_km}**")
-            st.write(f"Son İşlem Kilometre Verisi: **{son_bakim[0]}**")
-            st.write(f"Son bakım üzerinden yapılan kilometre: **{fark} km**")
             
-            # Karar ağaçları kullanılarak kilometre farkına göre durum analizi yapılmıştır.
+            # col1, col2, col3 = st.columns(3)
+            col1.metric(label="Güncel Kilometre", value=f"{guncel_km} km")
+            col2.metric(label="Son İşlem Kilometresi", value=f"{son_bakim[0]} km")
+            col3.metric(label="Kullanılan Kilometre", value=f"{fark} km", delta=f"{10000 - fark} km Kaldı" if fark < 10000 else "Sınır Aşıldı", delta_color="inverse")
+            
+            st.markdown("---")
+            
             if fark >= 10000:
-                st.error("KRİTİK UYARI: Standart 10.000 km periyodik bakım sınırı aşılmıştır!")
+                st.error("🚨 KRİTİK UYARI: Standart 10.000 km periyodik bakım sınırı aşılmıştır! Lütfen en kısa sürede servise başvurun.")
             elif fark >= 1000:
-                st.warning("BİLGİ MESAJI: Ağır mekanik işlem (rektefiye vb.) yapıldıysa 1.000 km rodaj bakım zamanı gelmiştir.")
+                st.warning("⚠️ BİLGİ MESAJI: Ağır mekanik işlem (rektefiye vb.) yapıldıysa 1.000 km rodaj bakım (LL-04 yağ değişimi) zamanı gelmiştir.")
             else:
-                st.success("DURUM GÜVENLİ: Herhangi bir periyodik bakım veya rodaj sınırına ulaşılmamıştır.")
+                st.success("✅ DURUM GÜVENLİ: Herhangi bir periyodik bakım veya rodaj sınırına ulaşılmamıştır.")
         else:
             st.info("Veritabanında karşılaştırma yapılabilecek bakım kaydı bulunmamaktadır.")
 
-# İşlemler tamamlandıktan sonra veritabanı bağlantısı sonlandırılmıştır.
-conn.close()
+# conn.close()
