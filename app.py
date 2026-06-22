@@ -6,38 +6,50 @@ from streamlit_option_menu import option_menu
 from modeller import Arac, BakimKaydi
 from veritabani import baglanti_olustur
 
-# --- SAYFA YAPILANDIRMASI ---
-st.set_page_config(page_title="Premium Araç Yönetimi", page_icon="🏎️", layout="wide")
+# Sayfa genel ayarlari
+st.set_page_config(page_title="Premium Arac Yonetimi", page_icon="腔", layout="wide")
 
-# Veritabanı Bağlantısı
+# Veritabani baglantisinin kurulmasi
 conn = baglanti_olustur()
 cursor = conn.cursor()
 
-# --- MODERN YAN MENÜ TASARIMI ---
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3202/3202926.png", width=100)
-    st.markdown("## Filonuzu Yönetin")
-    secim = option_menu(
-        menu_title=None,
-        options=["Dashboard", "Yeni Araç Ekle", "Bakım/Masraf İşle", "Finansal Rapor", "Akıllı Uyarılar"],
-        icons=["bar-chart-line-fill", "car-front-fill", "tools", "wallet-fill", "bell-fill"],
-        menu_icon="cast",
-        default_index=0,
-        styles={
-            "container": {"padding": "0!important", "background-color": "transparent"},
-            "icon": {"color": "#4A90E2", "font-size": "20px"}, 
-            "nav-link": {"font-size": "15px", "text-align": "left", "margin":"0px", "--hover-color": "#262730"},
-            "nav-link-selected": {"background-color": "#4A90E2", "color": "white", "icon-color": "white"},
-        }
-    )
-    st.markdown("---")
-    st.caption("© 2026 Araç Bakım Sistemi")
+# Sayfa ustu bosluk optimizasyonu için temel stil tanımı
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 0rem;
+    }
+    div[data-testid="metric-container"] {
+        background-color: #1a1c24;
+        border: 1px solid #2b2e40;
+        border-radius: 12px;
+        padding: 15px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# --- İÇERİK BÖLÜMÜ ---
+# Yatay Ust Menu Navigasyonu
+secim = option_menu(
+    menu_title=None,
+    options=["Dashboard", "Yeni Arac Ekle", "Bakim/Masraf Isle", "Finansal Rapor", "Akilli Uyari Sistemi"],
+    icons=["activity", "car-front-fill", "tools", "wallet2", "bell-fill"],
+    menu_icon="cast",
+    default_index=0,
+    orientation="horizontal",
+    styles={
+        "container": {"padding": "0!important", "background-color": "#0e1117"},
+        "icon": {"color": "#4A90E2", "font-size": "16px"},
+        "nav-link": {"font-size": "15px", "text-align": "center", "margin": "0px", "--hover-color": "#1a1c24"},
+        "nav-link-selected": {"background-color": "#4A90E2", "color": "white"}
+    }
+)
+
+st.markdown("---")
+
+# Mizanpaj ve Modul Kontrolleri
 if secim == "Dashboard":
-    st.title("📊 Sistem Gösterge Paneli")
-    st.markdown("Filonuzun anlık durumunu ve maliyet analizlerini buradan takip edebilirsiniz.")
-    st.markdown("---")
+    st.markdown("### 📊 Sistem Ozet Paneli")
     
     cursor.execute("SELECT COUNT(*) FROM araclar")
     toplam_arac = cursor.fetchone()[0]
@@ -46,89 +58,75 @@ if secim == "Dashboard":
     toplam_maliyet = cursor.fetchone()[0] or 0.0
     
     col1, col2, col3 = st.columns(3)
+    col1.metric(label="Kayitli Toplam Arac", value=f"{toplam_arac} Adet")
+    col2.metric(label="Toplam Bakim Gideri", value=f"{toplam_maliyet:,.2f} 兆")
+    col3.metric(label="Sistem Durumu", value="Aktif")
     
-    with col1:
-        st.info("🚗 Kayıtlı Araç Sayısı")
-        st.markdown(f"## {toplam_arac} Adet")
-    with col2:
-        st.success("💰 Toplam Bakım Gideri")
-        st.markdown(f"## {toplam_maliyet:,.2f} ₺")
-    with col3:
-        st.warning("⚡ Sistem Durumu")
-        st.markdown("## Optimizasyon Aktif")
-
     st.markdown("<br>", unsafe_allow_html=True)
     
     df_grafik = pd.read_sql_query("SELECT plaka, SUM(maliyet) as toplam FROM bakimlar GROUP BY plaka", conn)
     
     if not df_grafik.empty:
-        col_grafik1, col_grafik2 = st.columns(2)
-        with col_grafik1:
-            st.markdown("#### 🍩 Araç Bazlı Harcama Dağılımı")
-            fig_pie = px.pie(df_grafik, values='toplam', names='plaka', hole=0.5, 
-                             color_discrete_sequence=px.colors.sequential.Teal)
-            fig_pie.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=0, b=0, l=0, r=0))
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            st.markdown("##### Harcama Dagilimi")
+            fig_pie = px.pie(df_grafik, values='toplam', names='plaka', hole=0.4)
             st.plotly_chart(fig_pie, use_container_width=True)
-        with col_grafik2:
-            st.markdown("#### 📊 Finansal Gider Karşılaştırması")
+        with col_g2:
+            st.markdown("##### Gider Karsilastirmasi")
             fig_bar = px.bar(df_grafik, x='plaka', y='toplam', text_auto=True, color='plaka')
-            fig_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=0, b=0, l=0, r=0))
             st.plotly_chart(fig_bar, use_container_width=True)
     else:
-        st.info("💡 Grafiklerin oluşması için sisteme en az bir bakım kaydı giriniz.")
+        st.info("Grafiklerin yuklenmesi icin sisteme arac ve bakim kaydi girilmesi gerekmektedir.")
 
-elif secim == "Yeni Araç Ekle":
-    st.title("🏎️ Yeni Araç Kayıt Modülü")
-    st.markdown("Lütfen araca ait bilgileri eksiksiz doldurun.")
+elif secim == "Yeni Arac Ekle":
+    st.markdown("### 🏎️ Yeni Arac Kayit Modulu")
     
-    with st.container():
-        with st.form("arac_ekle_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            with col1:
-                plaka = st.text_input("Araç Plakası", placeholder="Örn: 34ABC123").upper()
-                marka = st.text_input("Marka", placeholder="Örn: BMW")
-            with col2:
-                model = st.text_input("Model", placeholder="Örn: F10 525d xDrive")
-                km = st.number_input("Güncel Kilometre", min_value=0, step=1)
+    with st.form("arac_ekle_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            plaka = st.text_input("Arac Plakasi").upper()
+            marka = st.text_input("Marka")
+        with col2:
+            model = st.text_input("Model")
+            km = st.number_input("Guncel Kilometre", min_value=0, step=1)
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            submit = st.form_submit_button("Sisteme Kaydet", use_container_width=True)
+        submit = st.form_submit_button("Sisteme Kaydet", use_container_width=True)
+        
+        if submit:
+            if plaka and marka and model:
+                try:
+                    yeni_arac = Arac(plaka, marka, model, km)
+                    cursor.execute("INSERT INTO araclar (plaka, marka, model, kilometre) VALUES (?, ?, ?, ?)",
+                                   (yeni_arac.plaka, yeni_arac.marka, yeni_arac.model, yeni_arac.kilometre))
+                    conn.commit()
+                    st.success(f"{plaka} plakali arac basariyla kaydedildi.")
+                except sqlite3.IntegrityError:
+                    st.error("Bu plaka sistemde zaten kayitli.")
+            else:
+                st.warning("Lutfen tum alanlari doldurunuz.")
 
-            if submit:
-                if plaka and marka and model:
-                    try:
-                        yeni_arac = Arac(plaka, marka, model, km)
-                        cursor.execute("INSERT INTO araclar (plaka, marka, model, kilometre) VALUES (?, ?, ?, ?)", 
-                                       (yeni_arac.plaka, yeni_arac.marka, yeni_arac.model, yeni_arac.kilometre))
-                        conn.commit()
-                        st.success(f"✅ {plaka} plakalı araç başarıyla filoya eklendi.")
-                    except sqlite3.IntegrityError:
-                        st.error("❌ HATA: Bu plaka numarası sistemde zaten kayıtlı.")
-                else:
-                    st.warning("⚠️ Lütfen tüm alanları doldurunuz.")
-
-elif secim == "Bakım/Masraf İşle":
-    st.title("🔧 Servis ve Masraf Girişi")
+elif secim == "Bakim/Masraf Isle":
+    st.markdown("### 🔧 Bakim ve Masraf Girisi")
     
     cursor.execute("SELECT plaka FROM araclar")
     plaka_listesi = [arac[0] for arac in cursor.fetchall()]
-
+    
     if not plaka_listesi:
-        st.warning("Lütfen önce sisteme bir araç kaydediniz.")
+        st.info("Sistemde kayitli arac bulunmamaktadir.")
     else:
         with st.form("bakim_ekle_form", clear_on_submit=True):
-            secilen_plaka = st.selectbox("İşlem Yapılacak Araç:", plaka_listesi)
-            islem_turu = st.text_input("İşlem Detayı", placeholder="Örn: Periyodik Bakım, LL-04 Motor Yağı Değişimi...")
+            secilen_plaka = st.selectbox("Arac Seciniz:", plaka_listesi)
+            islem_turu = st.text_input("Yapilan Islem")
             
             col1, col2 = st.columns(2)
             with col1:
-                islem_km = st.number_input("İşlem Yapıldığı Kilometre", min_value=0, step=1)
+                islem_km = st.number_input("Islem Kilometresi", min_value=0, step=1)
             with col2:
-                maliyet = st.number_input("Toplam Maliyet (TL)", min_value=0.0, step=100.0)
+                maliyet = st.number_input("Maliyet (TL)", min_value=0.0, step=50.0)
+                
+            submit = st.form_submit_button("Veriyi Kaydet", use_container_width=True)
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            submit = st.form_submit_button("Bakım Verisini Onayla ve İşle", use_container_width=True)
-
             if submit:
                 if islem_turu:
                     yeni_bakim = BakimKaydi(secilen_plaka, islem_turu, islem_km, maliyet)
@@ -136,54 +134,43 @@ elif secim == "Bakım/Masraf İşle":
                                    (yeni_bakim.plaka, yeni_bakim.islem_turu, yeni_bakim.kilometre, yeni_bakim.maliyet, yeni_bakim.tarih))
                     cursor.execute("UPDATE araclar SET kilometre = ? WHERE plaka = ?", (islem_km, secilen_plaka))
                     conn.commit()
-                    st.success("✅ Servis kaydı başarıyla oluşturuldu. Aracın güncel kilometresi senkronize edildi.")
+                    st.success("Bakim kaydi basariyla eklendi.")
                 else:
-                    st.warning("⚠️ Lütfen işlem detayını belirtiniz.")
+                    st.warning("Islem turu bos birakilamaz.")
 
 elif secim == "Finansal Rapor":
-    st.title("📋 Finansal Geçmiş ve Raporlama")
+    st.markdown("### 📋 Finansal Raporlama")
     
     cursor.execute("SELECT plaka FROM araclar")
     plaka_listesi = [arac[0] for arac in cursor.fetchall()]
-
+    
     if not plaka_listesi:
-        st.warning("Sistemde raporlanacak araç bulunmamaktadır.")
+        st.info("Sistemde arac bulunmuyor.")
     else:
-        secilen_plaka = st.selectbox("Analiz Edilecek Araç:", plaka_listesi)
-        st.markdown("---")
+        secilen_plaka = st.selectbox("Arac Seciniz:", plaka_listesi)
         
         df = pd.read_sql_query("SELECT tarih, islem_turu, kilometre, maliyet FROM bakimlar WHERE plaka = ? ORDER BY kilometre DESC", conn, params=(secilen_plaka,))
         
         if not df.empty:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.dataframe(df, use_container_width=True, hide_index=True)
-            with col2:
-                toplam_harcama = df['maliyet'].sum()
-                st.metric(label="Toplam Araç Gideri", value=f"{toplam_harcama:,.2f} ₺")
-                
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 CSV Olarak İndir",
-                    data=csv,
-                    file_name=f'{secilen_plaka}_rapor.csv',
-                    mime='text/csv',
-                    use_container_width=True
-                )
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            toplam_harcama = df['maliyet'].sum()
+            st.metric(label="Toplam Gider", value=f"{toplam_harcama:,.2f} 兆")
+            
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(label="📥 CSV Indir", data=csv, file_name=f'{secilen_plaka}_rapor.csv', mime='text/csv')
         else:
-            st.info("Bu araca ait servis kaydı bulunmamaktadır.")
+            st.info("Bu araca ait kayit bulunmamaktadir.")
 
-elif secim == "Akıllı Uyarılar":
-    st.title("🚨 Periyodik Bakım ve Rodaj Takibi")
+elif secim == "Akilli Uyari Sistemi":
+    st.markdown("### 🚨 Akilli Kontrol Paneli")
     
     cursor.execute("SELECT plaka FROM araclar")
     plaka_listesi = [arac[0] for arac in cursor.fetchall()]
-
+    
     if not plaka_listesi:
-        st.warning("Kontrol edilecek araç kaydı bulunamadı.")
+        st.info("Arac bulunamadi.")
     else:
-        secilen_plaka = st.selectbox("Durumu Kontrol Edilecek Araç:", plaka_listesi)
-        st.markdown("---")
+        secilen_plaka = st.selectbox("Arac Seciniz:", plaka_listesi)
         
         cursor.execute("SELECT kilometre FROM araclar WHERE plaka = ?", (secilen_plaka,))
         guncel_km = cursor.fetchone()[0]
@@ -195,20 +182,17 @@ elif secim == "Akıllı Uyarılar":
             fark = guncel_km - son_bakim[0]
             
             col1, col2, col3 = st.columns(3)
-            col1.metric(label="Mevcut Kilometre", value=f"{guncel_km:,} km")
-            col2.metric(label="Son Servis Kilometresi", value=f"{son_bakim[0]:,} km")
-            col3.metric(label="Servisten Sonra Yapılan", value=f"{fark:,} km", 
-                        delta=f"{10000 - fark:,} km Kaldı" if fark < 10000 else "AŞILDI", delta_color="inverse")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
+            col1.metric(label="Guncel KM", value=f"{guncel_km} km")
+            col2.metric(label="Son Bakim KM", value=f"{son_bakim[0]} km")
+            col3.metric(label="Yapilan Yol", value=f"{fark} km")
             
             if fark >= 10000:
-                st.error("🚨 **KRİTİK DURUM:** 10.000 km periyodik bakım limiti aşılmış! Aracın acilen servise alınması gerekmektedir.")
+                st.error("🚨 Periyodik bakim zamani gelmistir!")
             elif fark >= 1000:
-                st.warning("⚠️ **DİKKAT:** Motor revizyonu veya ağır işlem yapıldıysa 1.000 km rodaj (ilk yağ değişimi) süresi gelmiştir.")
+                st.warning("⚠️ Agir mekanik islemler sonrasi rodaj kontrolu gerekebilir.")
             else:
-                st.success("✅ **HER ŞEY YOLUNDA:** Araç mekanik sınırların içinde, güvenle yola devam edebilirsiniz.")
+                st.success("✅ Durum guvenli.")
         else:
-            st.info("Sistemde karşılaştırma yapılacak geçmiş servis kaydı bulunamadı.")
+            st.info("Karsilastirma yapilacak bakim kaydi bulunmuyor.")
 
 conn.close()
